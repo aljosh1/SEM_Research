@@ -66,7 +66,8 @@ pseudocode).
 - `src/config.py` — every parameter tagged **paper / implementation / extension**
 - `src/pipeline.py` — orchestration, output naming, provenance
 - `main.py` — CLI (`--help`, `--list-parameters`, calibration flags)
-- `tests/` — 140 tests
+- `tests/` — 159 tests
+- `evaluate.py` — annotation scoring (IoU / Dice / precision / recall), ready but unscored
 - No deep learning anywhere
 
 *Figure:* directory tree (from README §6).
@@ -115,9 +116,11 @@ then `05_refinement.png` — the "before/after" that carries the slide.
 
 ## Slide 9 — Experimental results and validation
 
-- **Verified:** 140 tests pass; deterministic re-runs; six real SEM panels processed end-to-end
+- **Verified:** 159 tests pass; deterministic re-runs; six real SEM panels processed end-to-end
 - **Sensitivity:** region count changes 30× as `sigma_multiplier` goes 1.0 → 3.0
 - **NOT scientifically validated:** no ground truth ⇒ no IoU / Dice / precision / recall claimed
+- **Evaluator built and ready** (`evaluate.py`): drop annotated masks into `data/annotations/` and the
+  metrics compute automatically. It currently scores 0 images.
 - Known defect: VOID area inflated (only ~35 % of a VOID region is actually void) because the paper's
   `μ_l ≈ I_t` premise fails on these images
 
@@ -128,7 +131,8 @@ State the negative result explicitly — it is the most important slide.
 
 ## Slide 10 — Limitations and future work
 
-- Annotate 10–20 panels per condition → compute IoU/Dice against masks
+- Annotate 10–20 panels per condition → the evaluator computes IoU/Dice immediately
+  (`docs/annotations_guide.md` gives the file format and annotation rules)
 - Independent depth ground truth (profilometry / stereo SEM) to calibrate "considerable depth"
 - Restrict `μ_l` to the tip neighbourhood (a labelled deviation, not a silent change)
 - Add stereological correction for projected void counts

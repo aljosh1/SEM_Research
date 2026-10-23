@@ -14,9 +14,9 @@ The brief requires three completion states to be kept separate. They are:
 
 | Claim | Status | Evidence |
 |---|---|---|
-| **Implemented** — the code exists and covers the specified stages | **Yes** | 9 modules + CLI, `src/`, `main.py` |
-| **Verified** — the software has been executed and tested | **Yes** | 140 automated tests pass; pipeline run end-to-end on 6 real SEM panels; all outputs inspected |
-| **Scientifically validated** — segmentation accuracy proved against ground truth | **No** | No ground-truth annotations exist for the available images. **No IoU/Dice/precision/recall is reported because none could be computed honestly.** |
+| **Implemented** — the code exists and covers the specified stages | **Yes** | 9 modules + CLI + evaluator; `src/`, `main.py`, `evaluate.py` |
+| **Verified** — the software has been executed and tested | **Yes** | 159 automated tests pass; pipeline run end-to-end on 6 real SEM panels; all outputs inspected; evaluator exercised end-to-end |
+| **Scientifically validated** — segmentation accuracy proved against ground truth | **No** | No ground-truth annotations exist for the available images. The evaluator is implemented (§7.1) but currently scores 0 images. **No IoU/Dice/precision/recall is reported because none could be computed honestly.** |
 
 Passing software tests demonstrates that the program does what it is written to do. It does **not**
 demonstrate that the VOID/SURFACE/MIXED labels correspond to physical reality. Section 6 explains
@@ -26,7 +26,7 @@ why the VOID class in particular should currently be treated as indicative only.
 
 ## 2. Test suite — actual results
 
-Executed with `pytest`. Result: **140 passed, 0 failed**.
+Executed with `pytest`. Result: **159 passed, 0 failed**.
 
 | File | Tests | What is asserted (not merely "runs without raising") |
 |---|---|---|
@@ -38,6 +38,7 @@ Executed with `pytest`. Result: **140 passed, 0 failed**.
 | `test_classification.py` | 14 | No void → SURFACE; fully covered → VOID; **VOID requires both `I_p <= I_t` and `I_c < mu_g + j*sigma_g`**; failure of either yields MIXED with the reason recorded; missing `I_t` cannot produce VOID; histogram peak is the most populated bin; `I_c` with `inverted_cdf` returns 79 for `0..99` at k=80 (exactly 80 values below); unassigned label ids are not reported; all three classes assigned on a constructed image with the class image agreeing with the class map |
 | `test_quantification.py` | 19 | `D_eq = sqrt(4A/pi)` (a disc of radius r gives 2r); circularity of a rasterised disc ≈ 1 within 0.12; **3 blobs in 1 region count as 3 voids**; voids ordered by descending area; speckle below `min_area` excluded; parent region attribution; border touching flagged; `AR = major/minor`; fractions sum to 1; **calibration off → physical columns null and density None**; calibration on → `area * px^2` and density in 1/mm²; CSV round-trip preserves schema |
 | `test_integration.py` | 13 | Full pipeline writes every expected file non-empty; class image contains only valid ids 0–3; mask PNGs are binary after round-trip; region CSV row count equals region count and areas sum to image size; void CSV is consistent with the mask; **the three area fractions sum to 1**; summary CSV has an explicit `unit` column with no missing values; `run_metadata.json` contains every required key and all listed output paths exist; **two runs with identical input and parameters produce byte-identical masks and CSVs**; calibration flows through to CSV and metadata; `--no-figures` suppresses figures; real SEM image runs end-to-end with readable non-empty CSVs |
+| `test_evaluation.py` | 19 | IoU/Dice/precision/recall on hand-computable masks; perfect → 1.0; no overlap → 0; **both empty → `None`, not 1.0**; empty prediction → precision `None`, recall 0; shape mismatch raises; ignore-label excluded per class; annotation discovery precedence; void-mask and class-map scoring end-to-end; invalid class labels raise; missing run mask raises; aggregation counts only scored images and reports `n` |
 
 ### Defects found by the tests during development (all corrected)
 
@@ -215,6 +216,44 @@ labelled extension rather than silently applied.
 
 Until (1) or (2) exists, the classification output should be described as *a reproducible application
 of the published algorithm*, not as *a measurement of physical voids*.
+
+### 7.1 The evaluator is implemented and ready
+`src/evaluation.py` and `evaluate.py` implement the brief's metrics
+(IoU, Dice, precision, recall) so validation is a single command once annotations exist:
+
+```powershell
+.\.venv\Scripts\python.exe evaluate.py --outputs outputs\validation --annotations data\annotations
+```
+
+Annotation naming (matched by image stem):
+
+| File | Interpretation |
+|---|---|
+| `<stem>_void_mask.png` / `.tif` | binary: non-zero = void. Scored against `masks/02_extended_void_mask.png` |
+| `<stem>_classes.png` / `.tif` | class ids: 0 = ignore, 1 = SURFACE, 2 = MIXED, 3 = VOID. Scored against `masks/03_class_image.png`, one-vs-rest |
+
+**Current state: 0 annotations, so 0 metrics.** Running it today prints "No annotations were found,
+so no metric is reported" and writes an empty results table — deliberately, rather than a placeholder
+number.
+
+The metric code was exercised against a *deliberately perturbed* copy of a prediction (not a real
+annotation) to confirm it responds to differences rather than returning 1.0 unconditionally:
+
+| Quantity | Value |
+|---|---|
+| TP / FP / FN / TN | 288,106 / 26,469 / 2,283 / 750,662 |
+| IoU | 0.9093 |
+| Dice | 0.9525 |
+| Precision | 0.9159 |
+| Recall | 0.9921 |
+
+These numbers are a **self-test of the metric implementation**, not segmentation accuracy, and must
+not be reported as a result. They appear here only so the arithmetic can be checked by hand
+(`IoU = 288106 / (288106 + 26469 + 2283) = 0.9093`).
+
+Degenerate cases are handled explicitly: when both masks are empty the scores are `None` (undefined),
+not 1.0; when nothing is predicted, precision is `None` and recall is 0.0. 19 tests in
+`tests/test_evaluation.py` cover these paths.
 
 ---
 
