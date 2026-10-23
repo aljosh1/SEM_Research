@@ -502,3 +502,4 @@ Do not commit bulk data; `data/raw/` is ignored except for `.gitkeep`.
 - [`docs/validation_runs.csv`](docs/validation_runs.csv) — per-image measured outputs
 - [`docs/sensitivity_threshold.csv`](docs/sensitivity_threshold.csv) — sigma-multiplier sweep
 - [`docs/presentation_outline.md`](docs/presentation_outline.md) — slide-by-slide handover deck
+# SEM_Research
