@@ -1,0 +1,7 @@
+image,size,th,I_t,mu_g,sigma_g,regions_init,candidates,regions_ref,VOID,MIXED,SURFACE,void_frac_%,mixed_frac_%,n_voids,status
+sem_dimples_deep.jpeg,1280x834,120.4,1.0,64.8,43.8,189,18,845,19,207,619,49.2,36.6,1343,ok
+sem_fig3_annotated.jpeg,1280x832,140.5,1.0,81.4,47.4,214,25,806,14,224,568,43.4,43.0,1234,ok
+sem_fig4_lowcontrast.jpeg,1280x834,187.8,1.0,115.5,55.0,78,3,724,5,93,626,59.3,22.5,1177,ok
+sem_fig4_panel.jpeg,1280x832,140.1,1.0,82.6,46.7,217,26,808,15,226,567,33.9,53.0,1281,ok
+sem_fig4_variant1.jpeg,1280x834,181.5,1.0,114.2,53.2,180,14,841,6,63,772,18.0,57.3,808,ok
+sem_fig4_variant2.jpeg,1280x831,154.8,1.0,90.8,53.3,209,25,705,23,161,521,59.0,29.5,1395,ok
