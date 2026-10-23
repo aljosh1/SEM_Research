@@ -8,10 +8,11 @@ shapes, area fractions) and complete provenance for every run.
 No deep learning is used anywhere: the pipeline is intensity histograms, thresholding,
 skeletonization, direction-guided edge linking, region growing and explicit decision rules.
 
-> **Scientific status.** The software is implemented and verified (140 automated tests pass, and it has
+> **Scientific status.** The software is implemented and verified (159 automated tests pass, and it has
 > been run end-to-end on six real SEM panels). It is **not** scientifically validated: no ground-truth
-> annotations exist for these images, so no accuracy metric is claimed. The VOID area fractions are
-> known to over-estimate, for reasons documented in
+> annotations exist for these images, so no accuracy metric is claimed — although the evaluation code
+> that computes IoU/Dice/precision/recall is implemented and ready (`evaluate.py`, see §16). The VOID
+> area fractions are known to over-estimate, for reasons documented in
 > [`docs/validation_report.md`](docs/validation_report.md) §6.1. Read that section before interpreting
 > results.
 
@@ -125,6 +126,7 @@ SEM_RESEARCH/
 │   │   └── _not_inputs/        # paper figures that are drawings, not micrographs
 │   └── reference/              # the two reference PDFs
 ├── docs/
+│   ├── annotations_guide.md   # how to label masks for scoring
 │   ├── technical_note.md       # methodology, equations, traceability
 │   ├── algorithm_flowchart.md  # flowchart + pseudocode
 │   ├── validation_report.md    # tests, real-image runs, failures
@@ -142,9 +144,11 @@ SEM_RESEARCH/
 │   ├── region_classification.py# §2.3 classification
 │   ├── quantification.py       # void/region measurements
 │   ├── visualization.py        # figures
-│   └── pipeline.py             # orchestration + metadata
-├── tests/                      # 140 pytest tests
+│   ├── pipeline.py             # orchestration + metadata
+│   └── evaluation.py           # IoU / Dice / precision / recall vs annotations
+├── tests/                      # 159 pytest tests
 ├── main.py                     # command-line application
+├── evaluate.py                 # score runs against annotations
 ├── requirements.txt
 └── .gitignore
 ```
@@ -387,7 +391,7 @@ Without it, every physical column is empty, `calibration_available` is `false`, 
 .\.venv\Scripts\python.exe -m pytest tests\ -v
 ```
 
-Current result: **140 passed**. Coverage by module is listed in
+Current result: **159 passed**. Coverage by module is listed in
 [`docs/validation_report.md`](docs/validation_report.md) §2, including the eight real defects the suite
 exposed during development.
 
@@ -405,10 +409,31 @@ sample is absent.
 Three states are kept strictly separate (details in `docs/validation_report.md`):
 
 1. **Implemented** — all stages coded, parameters traceable to the paper.
-2. **Verified** — executed and tested: 140 passing behavioural tests; six real panels processed; outputs
+2. **Verified** — executed and tested: 159 passing behavioural tests; six real panels processed; outputs
    inspected; determinism confirmed by byte-identical re-runs.
 3. **Scientifically validated** — **not achieved.** No ground-truth annotations exist, so IoU, Dice,
    precision and recall are deliberately **not reported**. Segmentation accuracy is unproven.
+
+### Scoring against your own annotations
+
+The metrics are implemented and waiting for data. Put annotation files in `data/annotations/`, named
+by image stem:
+
+| File | Interpretation |
+|---|---|
+| `<stem>_void_mask.png` (or `.tif`) | binary mask: non-zero = void |
+| `<stem>_classes.png` (or `.tif`) | class ids: 0 = ignore, 1 = SURFACE, 2 = MIXED, 3 = VOID |
+
+Then:
+
+```powershell
+.\.venv\Scripts\python.exe evaluate.py --outputs outputs\validation --annotations data\annotations
+```
+
+This writes `evaluation/segmentation_metrics.csv` (one row per image: TP/FP/FN/TN, IoU, Dice,
+precision, recall, plus per-class IoU/Dice) and `evaluation/evaluation_summary.json`. With no
+annotations present it prints that no metric is reported and writes an empty table — it never invents
+a score. When both masks are empty the metrics are `None` (undefined) rather than a misleading 1.0.
 
 ## 17. Known limitations
 
