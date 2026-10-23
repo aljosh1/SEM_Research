@@ -1,0 +1,8 @@
+# Core scientific stack
+numpy>=1.26
+opencv-python>=4.9
+scikit-image>=0.22
+scipy>=1.11
+matplotlib>=3.8
+pandas>=2.1
+pytest>=8.0
