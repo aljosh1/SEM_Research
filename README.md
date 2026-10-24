@@ -11,7 +11,7 @@ skeletonization, direction-guided edge linking, region growing and explicit deci
 > **Scientific status.** The software is implemented and verified (159 automated tests pass, and it has
 > been run end-to-end on six real SEM panels). It is **not** scientifically validated: no ground-truth
 > annotations exist for these images, so no accuracy metric is claimed — although the evaluation code
-> that computes IoU/Dice/precision/recall is implemented and ready (`evaluate.py`, see §16). The VOID
+> that computes IoU/Dice/precision/recall is implemented and ready (`evaluate.py`, see §17). The VOID 
 > area fractions are known to over-estimate, for reasons documented in
 > [`docs/validation_report.md`](docs/validation_report.md) §6.1. Read that section before interpreting
 > results.
@@ -29,17 +29,18 @@ skeletonization, direction-guided edge linking, region growing and explicit deci
 7. [Windows installation](#7-windows-installation)
 8. [Opening in VS Code](#8-opening-in-vs-code)
 9. [Command-line usage](#9-command-line-usage)
-10. [Supported image formats](#10-supported-image-formats)
-11. [Configuration options](#11-configuration-options)
-12. [Generated outputs](#12-generated-outputs)
-13. [Measurement definitions](#13-measurement-definitions)
-14. [Physical calibration](#14-physical-calibration)
-15. [Running the tests](#15-running-the-tests)
-16. [Validation methodology](#16-validation-methodology)
-17. [Known limitations](#17-known-limitations)
-18. [Reference paper](#18-reference-paper)
-19. [Adding your own sample images](#19-adding-your-own-sample-images)
-20. [Troubleshooting](#20-troubleshooting)
+10. [Web interface (upload and scan)](#10-web-interface-upload-and-scan)
+11. [Supported image formats](#11-supported-image-formats)
+12. [Configuration options](#12-configuration-options)
+13. [Generated outputs](#13-generated-outputs)
+14. [Measurement definitions](#14-measurement-definitions)
+15. [Physical calibration](#15-physical-calibration)
+16. [Running the tests](#16-running-the-tests)
+17. [Validation methodology](#17-validation-methodology)
+18. [Known limitations](#18-known-limitations)
+19. [Reference paper](#19-reference-paper)
+20. [Adding your own sample images](#20-adding-your-own-sample-images)
+21. [Troubleshooting](#21-troubleshooting)
 
 ---
 
@@ -148,6 +149,7 @@ SEM_RESEARCH/
 │   └── evaluation.py           # IoU / Dice / precision / recall vs annotations
 ├── tests/                      # 159 pytest tests
 ├── main.py                     # command-line application
+├── app.py                      # browser interface (upload & scan)
 ├── evaluate.py                 # score runs against annotations
 ├── requirements.txt
 └── .gitignore
@@ -264,7 +266,26 @@ Runtime is roughly 30–60 s for a 1280×832 panel on a typical laptop; most of 
 | `--preprocess`, `--gaussian-sigma`, `--median-kernel`, `--percentile-clip` | off | no preprocessing |
 | `--pixel-size-um`, `--calibration-source` | none | none |
 
-## 10. Supported image formats
+## 10. Web interface (upload and scan)
+
+`app.py` provides a local browser interface: drag an SEM image in, press **Scan image**, and the
+page shows the segmentation overlay, every pipeline stage, the measurement tables (downloadable
+as CSV) and the written files. It calls the same `run_pipeline` as `main.py`, so a UI run and a
+CLI run with the same parameters give identical results.
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install streamlit
+.\.venv\Scripts\python.exe -m streamlit run app.py
+```
+
+The app opens at <http://localhost:8501>. Parameters (thresholds, calibration, optional
+preprocessing) are adjustable in the sidebar; defaults are the paper values. Each scan writes the
+full artefact set to `outputs\ui\latest\` and clears the previous one. The app is served locally,
+so the images never leave your machine.
+
+TIFF copies are skipped in the UI (they can be large); use the CLI when you need them.
+
+## 11. Supported image formats
 
 `.png`, `.tif`, `.tiff`, `.jpg`, `.jpeg`, `.bmp`.
 
@@ -274,7 +295,7 @@ Runtime is roughly 30–60 s for a 1280×832 panel on a typical laptop; most of 
   source range are recorded in `run_metadata.json` under `image.conversion_note`.
 - The **original array is never modified**; all processing happens on copies.
 
-## 11. Configuration options
+## 12. Configuration options
 
 Two equivalent routes:
 
@@ -295,7 +316,7 @@ run_pipeline("image.tif", "outputs/x", cfg)
 Every parameter carries a provenance tag — `paper`, `implementation` (the paper specifies the operation
 but not the number) or `extension` (not in the paper). `cfg.validate()` rejects inconsistent settings.
 
-## 12. Generated outputs
+## 13. Generated outputs
 
 Each run creates:
 
@@ -343,7 +364,7 @@ operations, calibration source, per-stage diagnostics, warnings, and the list of
 > contain non-void pixels (measured ~35 % void coverage on real panels), so painting the whole region
 > red would misrepresent the image.
 
-## 13. Measurement definitions
+## 14. Measurement definitions
 
 | Quantity | Definition |
 |---|---|
@@ -370,7 +391,7 @@ Files:
   classification fired.
 - `summary_statistics.csv` — long format (`metric`, `value`, `unit`) so units are never ambiguous.
 
-## 14. Physical calibration
+## 15. Physical calibration
 
 **No calibration exists in the source material.** The paper reports magnification but no pixel size,
 and a pixel size is **never inferred from magnification** (that requires working distance, detector
@@ -385,7 +406,7 @@ Provide it explicitly when you have it:
 Without it, every physical column is empty, `calibration_available` is `false`, and
 `void_number_density_per_mm2` is `null`. Pixel-based analysis never requires calibration.
 
-## 15. Running the tests
+## 16. Running the tests
 
 ```powershell
 .\.venv\Scripts\python.exe -m pytest tests\ -v
@@ -404,7 +425,7 @@ Run a subset:
 The suite includes one test that needs `data/sample/sem_dimples_deep.jpeg`; it skips cleanly if the
 sample is absent.
 
-## 16. Validation methodology
+## 17. Validation methodology
 
 Three states are kept strictly separate (details in `docs/validation_report.md`):
 
@@ -435,7 +456,7 @@ precision, recall, plus per-class IoU/Dice) and `evaluation/evaluation_summary.j
 annotations present it prints that no metric is reported and writes an empty table — it never invents
 a score. When both masks are empty the metrics are `None` (undefined) rather than a misleading 1.0.
 
-## 17. Known limitations
+## 18. Known limitations
 
 1. **VOID area is over-estimated.** With `μ_l` and `σ_l` taken over the whole region (as the paper
    states), regions that mix a dark void with a bright rim get a raised `I_v`, admitting off-void dark
@@ -451,7 +472,7 @@ a score. When both masks are empty the metrics are `None` (undefined) rather tha
    can break the assumption.
 7. **Runtime** is ~30–60 s per megapixel-scale panel.
 
-## 18. Reference paper
+## 19. Reference paper
 
 S. Banerjee, K. Basu, P. C. Chakraborti, S. K. Saha.
 *Segmentation of SEM Fractograph into Void and Surface Regions.*
@@ -462,7 +483,7 @@ S. Banerjee, K. Basu, P. C. Chakraborti, S. K. Saha. *Extraction of Region Conto
 Fractographs.* Proc. 2nd Int. Conf. on Emerging Applications of Information Technology, IEEE CS Press,
 2011, pp. 98–101. DOI [10.1109/EAIT.2011.20](https://doi.org/10.1109/EAIT.2011.20).
 
-## 19. Adding your own sample images
+## 20. Adding your own sample images
 
 1. Copy images into `data/sample/` (small set) or `data/raw/` (bulk; git-ignored).
 2. Prefer the **original** SEM export (8- or 16-bit TIFF over re-compressed JPEG).
@@ -477,7 +498,7 @@ Fractographs.* Proc. 2nd Int. Conf. on Emerging Applications of Information Tech
 
 Do not commit bulk data; `data/raw/` is ignored except for `.gitkeep`.
 
-## 20. Troubleshooting
+## 21. Troubleshooting
 
 | Symptom | Cause | Fix |
 |---|---|---|
@@ -488,7 +509,7 @@ Do not commit bulk data; `data/raw/` is ignored except for `.gitkeep`.
 | `ERROR: invalid input or parameters: ...` | out-of-range flag | the message names the field; see `--list-parameters` |
 | Warning `Void-tip detection failed: ...` | histogram has no local maximum (e.g. uniform image) | expected; no VOID regions can be assigned — check the image |
 | Everything is MIXED, nothing VOID | `I_t` low and `I_p > I_t` for every region | inspect `06_void_detection.png`; the surface may genuinely be all type-2 voids |
-| VOID far too large | extension over-reach (see §17.1) | known limitation; consider `--extension-sigma-coeff` sweep and record it as a deviation |
+| VOID far too large | extension over-reach (see §18.1) | known limitation; consider `--extension-sigma-coeff` sweep and record it as a deviation |
 | Figures fail to save | output directory not writable | choose a writable `-o` path |
 | Run takes >2 minutes | large image, many regions | use `--no-figures`; expect ~30–60 s per MP |
 
